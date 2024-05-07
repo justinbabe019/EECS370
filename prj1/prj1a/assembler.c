@@ -12,12 +12,52 @@
 //Every LC2K file will contain less than 1000 lines of assembly.
 #define MAXLINELENGTH 1000
 
+//defining variables
+char labels[MAXLINELENGTH][MAXLINELENGTH];
+short insNum=0;//number of instructions
+
 int readAndParse(FILE *, char *, char *, char *, char *, char *);
 static void checkForBlankLinesInCode(FILE *inFilePtr);
 static inline int isNumber(char *);
 
-int
-main(int argc, char **argv)
+//MY HELPER Functions
+//returns arg2 in number
+int checkArg2(char * arg2){
+    int arg2temp;
+    if(!isNumber(arg2)){
+        for(int i=0;i<insNum;i++){
+            if(!strcmp(arg2, labels[i]))arg2temp=i;
+        }
+    }
+    else{
+        arg2temp=atoi(arg2);
+    }
+    return arg2temp;
+}
+
+//check if arg's number/address is valid
+int checkAddress(int arg){
+    int t=arg;
+    if(t<-32768 || t>32768)exit(1);
+    t&=0xFFFF;
+    return t;
+}
+
+void numCheck(char *arg0, char*arg1, char* arg2){
+    if(!isNumber(arg0)&&!isNumber(arg1)&&!isNumber(arg2))exit(0);
+}
+
+void regNumCheck(int arg0, int arg1, int arg2){
+    if(arg0<0 || arg1<0 || arg2<0 || arg0>7 || arg1>7 || arg2>7)exit(1);
+}
+
+void regNumCheck2(int arg0, int arg1){
+    if(arg0<0 || arg1<0 || arg0>7 || arg1>7)exit(1);
+}
+
+
+
+int main(int argc, char **argv)
 {
     char *inFileString, *outFileString;
     FILE *inFilePtr, *outFilePtr;
@@ -48,20 +88,77 @@ main(int argc, char **argv)
         exit(1);
     }
 
-    /* here is an example for how to use readAndParse to read a line from
-        inFilePtr */
-    if (! readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2) ) {
-        /* reached end of file */
+    //read the labels
+    while(readAndParse(inFilePtr,label,opcode,arg0,arg1,arg2)){
+        strcpy(labels[insNum++],label);
     }
-
-    /* this is how to rewind the file ptr so that you start reading from the
-        beginning of the file */
     rewind(inFilePtr);
 
-    /* after doing a readAndParse, you may want to do the following to test the
-        opcode */
-    if (!strcmp(opcode, "add")) {
-        /* do whatever you need to do for opcode "add" */
+    //do calculations
+    while(readAndParse(inFilePtr,label,opcode,arg0,arg1,arg2)){
+        //RTYPE
+        int instruction=0;
+        int programCounter=0;
+        if(!strcmp(opcode, "add")){
+            numCheck(arg0,arg1,arg2);
+            regNumCheck(atoi(arg0),atoi(arg1),atoi(arg2));
+            instruction+=0<<22;
+            instruction+=(atoi(arg0)<<19) + (atoi(arg1)<<16) + atoi(arg2);
+        }
+        else if(!strcmp(opcode, "nor")){
+            numCheck(arg0,arg1,arg2);
+            regNumCheck(atoi(arg0),atoi(arg1),atoi(arg2));
+            instruction+=1<<22;
+            instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + atoi(arg2);
+        }
+        //ITYPE
+        else if(!strcmp(opcode, "lw")){
+            regNumCheck2(atoi(arg0), atoi(arg1));
+            int arg2temp=checkArg2(arg2);
+            checkAddress(arg2temp);
+            instruction+=2<<22;
+            instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + arg2temp;
+        }
+        else if(!strcmp(opcode, "sw")){
+            regNumCheck2(atoi(arg0), atoi(arg1));
+            int arg2temp=checkArg2(arg2);
+            checkAddress(arg2temp);
+            instruction+=3<<22;
+            instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + arg2temp;
+        }
+        else if(!strcmp(opcode, "beq")){
+            regNumCheck2(atoi(arg0), atoi(arg1));
+            int arg2temp=checkArg2(arg2);
+            checkAddress(arg2temp);
+            instruction+=4<<22;
+            arg2temp-=(programCounter-1);
+            if(arg2temp<0)arg2temp&=65535;
+            instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + arg2temp;
+        }
+        //JType
+        else if(!strcmp(opcode, "jlar")){
+            regNumCheck2(atoi(arg0), atoi(arg1));
+            instruction+=5<<22;
+            instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16);
+        }
+        //OType
+        else if(!strcmp(opcode, "halt")){
+            instruction+=6<<22;
+        }
+        else if(!strcmp(opcode, "noop")){
+            instruction+=7<<22;
+        }
+        else if(!strcmp(opcode,".fill")){
+            if(isNumber(arg0))instruction=atoi(arg0);
+            else
+                instruction=checkArg2(arg0);
+        }
+        else{
+            exit(1);
+        }
+        fprintf(outFilePtr,"%d\n",instruction);
+        programCounter++;
+        instruction=0;
     }
     return(0);
 }
@@ -133,9 +230,7 @@ static void checkForBlankLinesInCode(FILE *inFilePtr) {
  *
  * exit(1) if line is too long.
  */
-int
-readAndParse(FILE *inFilePtr, char *label, char *opcode, char *arg0,
-    char *arg1, char *arg2)
+int readAndParse(FILE *inFilePtr, char *label, char *opcode, char *arg0, char *arg1, char *arg2)
 {
     char line[MAXLINELENGTH];
     char *ptr = line;

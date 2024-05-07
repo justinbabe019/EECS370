@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Project 1a",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${fileDirname}/lab1",
+//Change fileDirname to workspaceFolder if there are issues: see code.visualstudio.com/docs/editor/variables-reference
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+        }
+    ]
+}
