@@ -22,31 +22,34 @@ static inline int isNumber(char *);
 
 //MY HELPER Functions
 //returns arg2 in number
-int checkArg2(char * arg2){
-    int arg2temp;
+int checkArg2(char * arg2,int pc, bool beq){
     if(!isNumber(arg2)){
         for(int i=0;i<insNum;i++){
-            if(!strcmp(arg2, labels[i]))arg2temp=i;
+            if(!strcmp(arg2, labels[i])){
+                //offset+pc+1=i
+                return beq?i-1-pc:i;
+            }
         }
+        exit(1);//ERROR: use of undefined labels
     }
-    else{
-        arg2temp=atoi(arg2);
-    }
-    return arg2temp;
+    //printf("%s %d %d\n",arg2, atoi(arg2),pc);
+    return atoi(arg2);
 }
 
 //check if arg's number/address is valid
 int checkAddress(int arg){
     int t=arg;
-    if(t<-32768 || t>32768)exit(1);
+    if(t<-32768 || t>32768)exit(1);//offsetFields that don’t fit in 16 bits
     t&=0xFFFF;
     return t;
 }
 
+//check if they are all valid numbers
 void numCheck(char *arg0, char*arg1, char* arg2){
-    if(!isNumber(arg0)&&!isNumber(arg1)&&!isNumber(arg2))exit(0);
+    if(!isNumber(arg0)||!isNumber(arg1)||!isNumber(arg2))exit(0);
 }
 
+//register number check
 void regNumCheck(int arg0, int arg1, int arg2){
     if(arg0<0 || arg1<0 || arg2<0 || arg0>7 || arg1>7 || arg2>7)exit(1);
 }
@@ -94,11 +97,16 @@ int main(int argc, char **argv)
     }
     rewind(inFilePtr);
 
+    //ERROR CHECK DUPLICATE LABELS
+    for(int i=0;i<insNum-1;i++){
+        for(int j=i+1;j<insNum;j++){
+            if(!strcmp(labels[i],labels[j])&&strlen(labels[i])>0)exit(1);
+        }
+    }
     //do calculations
+    int programCounter=0, instruction=0;
     while(readAndParse(inFilePtr,label,opcode,arg0,arg1,arg2)){
         //RTYPE
-        int instruction=0;
-        int programCounter=0;
         if(!strcmp(opcode, "add")){
             numCheck(arg0,arg1,arg2);
             regNumCheck(atoi(arg0),atoi(arg1),atoi(arg2));
@@ -114,24 +122,24 @@ int main(int argc, char **argv)
         //ITYPE
         else if(!strcmp(opcode, "lw")){
             regNumCheck2(atoi(arg0), atoi(arg1));
-            int arg2temp=checkArg2(arg2);
+            int arg2temp=checkArg2(arg2,0,0);
             checkAddress(arg2temp);
             instruction+=2<<22;
             instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + arg2temp;
         }
         else if(!strcmp(opcode, "sw")){
             regNumCheck2(atoi(arg0), atoi(arg1));
-            int arg2temp=checkArg2(arg2);
+            int arg2temp=checkArg2(arg2,0,0);
             checkAddress(arg2temp);
             instruction+=3<<22;
             instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + arg2temp;
         }
+        //THIS IS THE PROBLEM
         else if(!strcmp(opcode, "beq")){
             regNumCheck2(atoi(arg0), atoi(arg1));
-            int arg2temp=checkArg2(arg2);
+            int arg2temp=checkArg2(arg2, programCounter,1);
             checkAddress(arg2temp);
             instruction+=4<<22;
-            arg2temp-=(programCounter-1);
             if(arg2temp<0)arg2temp&=65535;
             instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + arg2temp;
         }
@@ -144,14 +152,16 @@ int main(int argc, char **argv)
         //OType
         else if(!strcmp(opcode, "halt")){
             instruction+=6<<22;
+            //programCounter++;
         }
         else if(!strcmp(opcode, "noop")){
             instruction+=7<<22;
+            //continue;
         }
         else if(!strcmp(opcode,".fill")){
             if(isNumber(arg0))instruction=atoi(arg0);
             else
-                instruction=checkArg2(arg0);
+                instruction=checkArg2(arg0,0,0);
         }
         else{
             exit(1);
