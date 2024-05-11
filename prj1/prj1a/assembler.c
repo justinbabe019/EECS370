@@ -39,14 +39,17 @@ int checkArg2(char * arg2,int pc, bool beq){
 //check if arg's number/address is valid
 int checkAddress(int arg){
     int t=arg;
-    if(t<-32768 || t>32768)exit(1);//offsetFields that don’t fit in 16 bits
+    if(t<-32768 || t>32767)exit(1);//offsetFields that don’t fit in 16 bits
     t&=0xFFFF;
     return t;
 }
 
-//check if they are all valid numbers
+//check if they are all numbers
+void numCheck2(char *arg0, char*arg1){
+    if(!isNumber(arg0)||!isNumber(arg1))exit(1);
+}
 void numCheck(char *arg0, char*arg1, char* arg2){
-    if(!isNumber(arg0)||!isNumber(arg1)||!isNumber(arg2))exit(0);
+    if(!isNumber(arg0)||!isNumber(arg1)||!isNumber(arg2))exit(1);
 }
 
 //register number check
@@ -100,7 +103,10 @@ int main(int argc, char **argv)
     //ERROR CHECK DUPLICATE LABELS
     for(int i=0;i<insNum-1;i++){
         for(int j=i+1;j<insNum;j++){
-            if(!strcmp(labels[i],labels[j])&&strlen(labels[i])>0)exit(1);
+            if(!strcmp(labels[i],labels[j]) && (strlen(labels[i])>0)){
+                printf("lab i = %s , lab j = %s\n",labels[i], labels[j]);
+                exit(1);
+            }
         }
     }
     //do calculations
@@ -110,52 +116,56 @@ int main(int argc, char **argv)
         if(!strcmp(opcode, "add")){
             numCheck(arg0,arg1,arg2);
             regNumCheck(atoi(arg0),atoi(arg1),atoi(arg2));
-            instruction+=0<<22;
+            instruction+=0b000<<22;
             instruction+=(atoi(arg0)<<19) + (atoi(arg1)<<16) + atoi(arg2);
         }
         else if(!strcmp(opcode, "nor")){
             numCheck(arg0,arg1,arg2);
             regNumCheck(atoi(arg0),atoi(arg1),atoi(arg2));
-            instruction+=1<<22;
+            instruction+=0b001<<22;
             instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + atoi(arg2);
         }
         //ITYPE
         else if(!strcmp(opcode, "lw")){
+            numCheck2(arg0,arg1);
             regNumCheck2(atoi(arg0), atoi(arg1));
             int arg2temp=checkArg2(arg2,0,0);
             checkAddress(arg2temp);
-            instruction+=2<<22;
+            instruction+=0b010<<22;
+            if(arg2temp<0)arg2temp&=0xFFFF;
             instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + arg2temp;
         }
         else if(!strcmp(opcode, "sw")){
+            numCheck2(arg0,arg1);
             regNumCheck2(atoi(arg0), atoi(arg1));
             int arg2temp=checkArg2(arg2,0,0);
             checkAddress(arg2temp);
-            instruction+=3<<22;
+            instruction+=0b011<<22;
+            if(arg2temp<0)arg2temp&=0xFFFF;
             instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + arg2temp;
         }
-        //THIS IS THE PROBLEM
         else if(!strcmp(opcode, "beq")){
+            numCheck2(arg0,arg1);
             regNumCheck2(atoi(arg0), atoi(arg1));
             int arg2temp=checkArg2(arg2, programCounter,1);
             checkAddress(arg2temp);
-            instruction+=4<<22;
-            if(arg2temp<0)arg2temp&=65535;
+            instruction+= 0b100<<22;
+            if(arg2temp<0)arg2temp&=0xFFFF;
             instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16) + arg2temp;
         }
         //JType
-        else if(!strcmp(opcode, "jlar")){
+        else if(!strcmp(opcode, "jalr")){
+            numCheck2(arg0, arg1);
             regNumCheck2(atoi(arg0), atoi(arg1));
-            instruction+=5<<22;
+            instruction+= 0b101<<22;
             instruction+= (atoi(arg0)<<19) + (atoi(arg1)<<16);
         }
         //OType
         else if(!strcmp(opcode, "halt")){
-            instruction+=6<<22;
-            //programCounter++;
+            instruction+= 0b110<<22;
         }
         else if(!strcmp(opcode, "noop")){
-            instruction+=7<<22;
+            instruction+= 0b111<<22;
             //continue;
         }
         else if(!strcmp(opcode,".fill")){

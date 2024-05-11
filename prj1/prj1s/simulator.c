@@ -62,9 +62,75 @@ main(int argc, char **argv)
     }
 
     //Your code starts here!
-
-
-
+    //initialize
+    state.pc=0;
+    for(int i=0;i<8;i++)state.reg[i]=0;
+    //simulating
+    bool halted=false;
+    int insNum=0;
+    while(state.pc<state.numMemory && !halted){
+        insNum++;
+        printState(&state);
+        //DECODE
+        int op=state.mem[state.pc]>>22,f0=(state.mem[state.pc]>>19)&0b111, f1=(state.mem[state.pc]>>16)&0b111, f2;
+        //SIMULATE
+        switch (op)
+        {
+        case 0://add
+            f2=state.mem[state.pc]&0b111;
+            state.reg[f2]=state.reg[f0]+state.reg[f1];
+            state.pc++;
+            break;
+        case 1://nor
+            f2=state.mem[state.pc]&0b111;
+            state.reg[f2]=state.reg[f0]|state.reg[f1];
+            state.reg[f2]=~state.reg[f2];
+            state.pc++;
+            /* code */
+            break;
+        case 2://lw
+            //TODO f2
+            f2=convertNum(state.mem[state.pc]&0xFFFF);
+            state.reg[f1]=state.mem[state.reg[f0]+f2];
+            state.pc++;
+            //lw 0 1 bob; r1=mem[r0+6]
+            break;
+        case 3://sw
+            //TODO: f2
+            f2=convertNum(state.mem[state.pc]&0xFFFF);
+            state.mem[state.reg[f0]+f2]=state.reg[f1];
+            state.pc++;
+            break;
+        case 4://beq
+            if(state.reg[f0]==state.reg[f1]){
+                f2=convertNum(state.mem[state.pc]&0xFFFF);
+                state.pc=state.pc+1+f2;
+                printf("%d F2=\n",f2);
+            }
+            else
+                state.pc++;
+            break;
+        case 5://jalr
+            state.reg[f1]=state.pc+1;
+            if(f0==f1)state.pc=state.pc+1;
+            else
+                state.pc=state.reg[f0];
+            break;
+        case 6://halt
+            halted=true;
+            state.pc++;
+            break;
+        case 7://noop
+            state.pc++;
+            break;
+        default:
+            exit(1);
+            break;
+        }
+    }
+    //end of simulator
+    printf("machine halted\ntotal of %d instructions executed\nfinal state of machine:\n", insNum);
+    printState(&state);
     //Your code ends here! 
 
     return(0);
