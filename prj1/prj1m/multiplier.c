@@ -24,5 +24,16 @@ int main(){
    }
    printf("%d\n",total);
 
+   /*
+   reg0: zero
+   reg1: mplier
+   reg7: mcand/cur
+   reg2: i
+   reg3: 16/the nor output
+   reg4: dig
+   reg5: total
+   reg6: one/nor dig dig
+   */
+
    return 0;
 }
