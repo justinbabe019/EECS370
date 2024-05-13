@@ -1,6 +1,6 @@
 	lw	0	1	count
 	lw	1	2	0
-	lw	2	3	increm
+	lw	2	3	incre
 	lw	3	4	array
 	add	5	6	7
 	add	5	2	2

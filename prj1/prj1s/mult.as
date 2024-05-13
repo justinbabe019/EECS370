@@ -24,4 +24,4 @@ mplier	.fill	1429			0b10110010101
 zero	.fill	0
 one	.fill	1
 neg1	.fill	-1
-sixt	.fill	16
+sixt	.fill	4
