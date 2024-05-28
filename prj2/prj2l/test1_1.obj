@@ -1,0 +1,34 @@
+7 8 8 10
+8716288
+9764864
+29360128
+4915205
+16777217
+29360128
+29360128
+0
+0
+0
+6
+8
+0
+0
+13
+Stack U 0
+Jump U 0
+Do T 2
+Array D 0
+SubAdr U 0
+Some D 1
+IDK U 0
+Sth D 6
+0 lw Stack
+1 lw Jump
+0 .fill Stack
+1 .fill SubAdr
+2 .fill SubAdr
+3 .fill end
+4 .fill Some
+5 .fill IDK
+6 .fill Jump
+7 .fill Sth

@@ -1,0 +1,49 @@
+17 11 9 11
+8454162
+10223616
+9043987
+14417940
+655361
+16842755
+16842749
+17367047
+29360128
+25165824
+10813440
+2949121
+14483456
+9109504
+25165824
+29360128
+16842743
+10
+5
+-1
+8
+4
+0
+15
+0
+9
+26
+0
+Array U 0
+Start T 4
+NOOP T 8
+Add T 11
+Do U 0
+Halt T 14
+Jump T 15
+SubAdr D 3
+IDK D 4
+0 lw five
+1 lw Array
+2 lw neg1
+3 sw SubAdr
+12 sw Do
+13 lw Do
+5 .fill Array
+6 .fill Jump
+7 .fill Do
+8 .fill done
+9 .fill zero

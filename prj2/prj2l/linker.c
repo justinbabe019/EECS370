@@ -149,7 +149,6 @@ int main(int argc, char *argv[]) {
 	//    Happy coding!!!
 
 	//------ERROR CHECKING------//
-	//printf("starting error checking\n");
 	char allGAddr[MAXLINELENGTH][MAXLINELENGTH];
 	char allGType[MAXLINELENGTH];
 	int gCount=0;
@@ -208,7 +207,7 @@ int main(int argc, char *argv[]) {
 								if(!strcmp(files[i].relocTable[j].label, files[k].symbolTable[k2].label) && files[k].symbolTable[k2].location!='U'){
 									if(found)exit(1);//duplicate
 									found=true;
-									offset=files[k].symbolTable[k2].offset;;
+									offset=files[k].symbolTable[k2].offset;
 									if(files[k].symbolTable[k2].location=='T'){
 										for(int idk=0;idk<k;idk++)offset+=files[idk].textSize;
 									}
@@ -225,7 +224,7 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			
-			else{//lw sw, aka text section
+			else{//lw sw , aka text section
 				int offSet=0;
 				bool found=false;
 				//handles global
@@ -240,10 +239,13 @@ int main(int argc, char *argv[]) {
 									offSet=files[k].symbolTable[k2].offset;
 									if(found)exit(1);//duplicate
 									found=true;
-									for(int idk=0;idk<k;idk++){
-										offSet+=files[idk].dataSize;
+									if(files[k].symbolTable[k2].location=='D'){
+										for(int idk=0;idk<k;idk++)offSet+=files[idk].dataSize;
+										offSet+=totalTextSize;
 									}
-									offSet+=totalTextSize;
+									else{
+										for(int idk=0;idk<k;idk++)offSet+=files[idk].textSize;
+									}
 								}
 							}
 						}
@@ -253,6 +255,7 @@ int main(int argc, char *argv[]) {
 				//handles local
 				else{
 					offSet=files[i].text[files[i].relocTable[j].offset]&0x00FFFF;
+					files[i].text[files[i].relocTable[j].offset]-=offSet;
 					//local label in text section
 					if(offSet < files[i].textSize){
 						for(int k=0;k<i;k++){//add all the data lines before this file
@@ -268,8 +271,6 @@ int main(int argc, char *argv[]) {
 						}
 					}
 				}
-				files[i].text[files[i].relocTable[j].offset]>>=16;
-				files[i].text[files[i].relocTable[j].offset]<<=16;
 				files[i].text[files[i].relocTable[j].offset]+=offSet;
 			}
 		}
