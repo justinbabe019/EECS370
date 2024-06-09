@@ -155,21 +155,22 @@ int main(int argc, char *argv[]) {
         newState.pc=state.pc+1;
         newState.IFID.pcPlus1=newState.pc;
         newState.IFID.instr=state.instrMem[state.pc];
-        newState.IFID.pcPlus1=state.pc+1;
         /* ---------------------- ID stage --------------------- */
         newState.IDEX.pcPlus1=state.IFID.pcPlus1;
         newState.IDEX.instr=state.IFID.instr;
         newState.IDEX.valA=state.reg[field0(state.IFID.instr)];
         newState.IDEX.valB=state.reg[field1(state.IFID.instr)];
-        newState.IDEX.offset=convertNum(state.IFID.instr&0xFFFF);
+        newState.IDEX.offset=convertNum(field2(state.IFID.instr));
         //detect data hazard
         bool been=false;
         if(depreg==field0(state.IFID.instr))been=true;
         if(depreg==field1(state.IFID.instr) && opcode(newState.IDEX.instr)!=LW)
             been=true;
         if(been){
-            newState.IFID.instr=newState.IDEX.instr;
+            newState.IFID.instr=state.IFID.instr;
             newState.IDEX.instr=0b111<<22;
+            newState.IFID.pcPlus1=state.IFID.pcPlus1;
+            newState.pc=state.pc;
         }
         //increase and store dependencies
         if(opcode(newState.IDEX.instr)==LW)
@@ -178,7 +179,6 @@ int main(int argc, char *argv[]) {
             depreg=-1;
         /* ---------------------- EX stage --------------------- */
         newState.EXMEM.instr=state.IDEX.instr;
-        newState.EXMEM.valB=state.IDEX.valB;
         newState.EXMEM.branchTarget=state.IDEX.pcPlus1+state.IDEX.offset;
         //data hazard detect
         bool beenA=false, beenB=false;
@@ -217,7 +217,7 @@ int main(int argc, char *argv[]) {
             state.IDEX.valA=state.WBEND.writeData;
             beenA=true;
         }
-        if(!beenB && field0(state.IDEX.instr)==field2(state.WBEND.instr) && (opcode(state.WBEND.instr)==ADD || opcode(state.WBEND.instr)==NOR)){
+        if(!beenB && field1(state.IDEX.instr)==field2(state.WBEND.instr) && (opcode(state.WBEND.instr)==ADD || opcode(state.WBEND.instr)==NOR)){
             state.IDEX.valB=state.WBEND.writeData;
             beenB=true;
         }
@@ -241,7 +241,6 @@ int main(int argc, char *argv[]) {
                 break;
             case BEQ: 
                 newState.EXMEM.eq=(state.IDEX.valA==state.IDEX.valB);
-                if(newState.EXMEM.eq)newState.pc=newState.EXMEM.branchTarget;
                 break;
             case JALR: 
                 break;
@@ -250,10 +249,11 @@ int main(int argc, char *argv[]) {
             case NOOP:
                 break;
         }
+        newState.EXMEM.valB=state.IDEX.valB;
         /* --------------------- MEM stage --------------------- */
         newState.MEMWB.instr=state.EXMEM.instr;
         if(opcode(newState.MEMWB.instr)==SW)
-            newState.dataMem[newState.EXMEM.aluResult]=state.EXMEM.valB;
+            newState.dataMem[state.EXMEM.aluResult]=state.EXMEM.valB;
         else if(opcode(newState.MEMWB.instr)==LW)
             newState.MEMWB.writeData=state.dataMem[state.EXMEM.aluResult];
         else if(opcode(newState.MEMWB.instr)==ADD ||opcode(newState.MEMWB.instr)==NOR){
