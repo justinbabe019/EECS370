@@ -115,10 +115,13 @@ int cacheToMemAddr(int setIndex, int tag){
     return setIndex*cache.blockSize + tag*cache.numSets*cache.blockSize;
 }
 void updatesLRU(int cacheAddr, int setIndex){
+    //printf("cache addr is %d, set index is %d\n", cacheAddr, setIndex);
     cache.blocks[cacheAddr].lruLabel=cache.blocksPerSet-1;
-    int setStartAddrInCache=cache.blocksPerSet*cache.blockSize*setIndex;
+    int setStartAddrInCache=cache.blocksPerSet*setIndex;
     for(int i=0; i<cache.blocksPerSet; i++){
-        if(setStartAddrInCache+i!=cacheAddr)cache.blocks[setStartAddrInCache+i].lruLabel--;
+        if(setStartAddrInCache+i!=cacheAddr && cache.blocks[setStartAddrInCache+i].lruLabel>0)
+            cache.blocks[setStartAddrInCache+i].lruLabel--;
+        //printf("lru of %d is %d\n", setStartAddrInCache+i, cache.blocks[setStartAddrInCache+i].lruLabel);
     }
 }
 /*
@@ -141,7 +144,7 @@ int cache_access(int addr, int write_flag, int write_data)
 
     int setIndex = addr/cache.blockSize % cache.numSets;
     int tempTag = addr/cache.blockSize/cache.numSets;//address size / blocksize /num sets
-    int blockStartAddr = setIndex*cache.blocksPerSet+tempTag*cache.blocksPerSet*cache.numSets;//cache to mem
+    //int blockStartAddr = setIndex*cache.blocksPerSet+tempTag*cache.blocksPerSet*cache.numSets;//cache to mem
     int setStartAddr = cache.blocksPerSet*setIndex;//*cache.blockSize;//the belonging set's addr in 256 blocks
 
     //search for block in set
@@ -160,29 +163,31 @@ int cache_access(int addr, int write_flag, int write_data)
             if(write_flag==0){
                 printAction(addr, 1, cacheToProcessor);
                 //or return mem_access(addr, write_flag, write_data);
-                return cache.blocks[setStartAddr+i].data[addr-blockStartAddr];//!!not sure if the data block is right
+                return cache.blocks[setStartAddr+i].data[addr-cacheToMemAddr(setIndex, tempTag)];//!!not sure if the data block is right
             }
             //STORE
             else{
                 printAction(addr, 1, processorToCache);
-                cache.blocks[setStartAddr+i].data[addr-blockStartAddr]=write_data;
+                cache.blocks[setStartAddr+i].data[addr-cacheToMemAddr(setIndex, tempTag)]=write_data;
                 cache.blocks[setStartAddr+i].dirty=1;
-                printf("%d %d %d\n", addr, setStartAddr+i,cache.blocks[setStartAddr+i].dirty);
+                //printf("%d %d %d\n", addr, setStartAddr+i,cache.blocks[setStartAddr+i].dirty);
                 //do i need to print anything??
-                return mem_access(addr, write_flag, write_data);
+                return write_data;
             }
         }
     }
     //read data not in set/cache
     //if set does not have empty spot, EVICT
     int addrCache, addrMem = addr-addr%cache.blockSize;
-    if(invalidCount) addrCache= invalidAddr; 
+    if(invalidCount) addrCache = invalidAddr;
     //no more empty spots, needs to evict
     if(!invalidCount){
+        //printf("is there emptyspot?%d\n",invalidCount);
         int lruadd;
         int isDirty=0;
         //look for lru
         for(int i=0;i<cache.blocksPerSet;i++){
+            //printf("the current block addr is %d, and lru is %d\n", setStartAddr+i ,cache.blocks[setStartAddr+i].lruLabel);
             if(cache.blocks[setStartAddr+i].lruLabel==0){
                 lruadd=cacheToMemAddr(setIndex, cache.blocks[setStartAddr+i].tag);
                 //evict, overwrite mem if dirty
@@ -208,17 +213,19 @@ int cache_access(int addr, int write_flag, int write_data)
     cache.blocks[addrCache].valid=1;
     cache.blocks[addrCache].tag=tempTag;
     updatesLRU(addrCache, setIndex);
+    int ans=-1;
     for(int i=0; i<cache.blockSize; i++){
         cache.blocks[addrCache].data[i] = mem_access(addrMem+i, 0, 0);
+        if(addrMem+i==addr)ans=cache.blocks[addrCache].data[i];
     }
     printAction(addrMem, cache.blockSize, memoryToCache);
     //end of overwriting
     if(!write_flag)printAction(addr, 1, cacheToProcessor);
     else{ 
-        cache.blocks[addrCache].data[addr-blockStartAddr]=write_data;
+        cache.blocks[addrCache].data[addr-cacheToMemAddr(setIndex, cache.blocks[addrCache].tag)]=write_data;
         printAction(addr, 1, processorToCache);
     }
-    return mem_access(addr, write_flag, write_data);
+    return ans;
 }
 
 
@@ -231,7 +238,9 @@ int cache_access(int addr, int write_flag, int write_data)
  */
 void printStats(void)
 {
+    printf("$$$ Main memory words accessed: %d\n", get_num_mem_accesses());
     printf("End of run statistics:\n");
+    //printf("hits %d, misses %d, writebacks %d\n", );
     return;
 }
 

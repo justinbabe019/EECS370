@@ -87,7 +87,7 @@ main(int argc, char **argv)
     //simulating
     bool halted=false;
     int insNum=0;
-    cache_init(4,2,1);
+    cache_init(2,2,2);
     while(state.pc<state.numMemory && !halted){
         insNum++;
         //printState(&state);
