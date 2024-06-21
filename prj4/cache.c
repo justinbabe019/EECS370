@@ -101,8 +101,11 @@ void cache_init(int blockSize, int numSets, int blocksPerSet)
     for(int i=0;i<MAX_CACHE_SIZE;i++){
         cache.blocks[i].dirty=0;
         cache.blocks[i].valid=0;
-        cache.blocks[i].lruLabel=0;
         //LRU?
+    }
+    for(int i=0; i < cache.numSets; i++){
+        for(int j=0;j<cache.blocksPerSet; j++)
+            cache.blocks[i*cache.blocksPerSet+j].lruLabel=cache.blocksPerSet-1-j;
     }
     return;
 }
@@ -116,10 +119,11 @@ int cacheToMemAddr(int setIndex, int tag){
 }
 void updatesLRU(int cacheAddr, int setIndex){
     //printf("cache addr is %d, set index is %d\n", cacheAddr, setIndex);
+    int temp=cache.blocks[cacheAddr].lruLabel;
     cache.blocks[cacheAddr].lruLabel=cache.blocksPerSet-1;
     int setStartAddrInCache=cache.blocksPerSet*setIndex;
     for(int i=0; i<cache.blocksPerSet; i++){
-        if(setStartAddrInCache+i!=cacheAddr && cache.blocks[setStartAddrInCache+i].lruLabel>0)
+        if(setStartAddrInCache+i!=cacheAddr && cache.blocks[setStartAddrInCache+i].lruLabel>temp)
             cache.blocks[setStartAddrInCache+i].lruLabel--;
         //printf("lru of %d is %d\n", setStartAddrInCache+i, cache.blocks[setStartAddrInCache+i].lruLabel);
     }
@@ -186,6 +190,7 @@ int cache_access(int addr, int write_flag, int write_data)
         int lruadd;
         int isDirty=0;
         //look for lru
+        int smallest=cache.blockSize;
         for(int i=0;i<cache.blocksPerSet;i++){
             //printf("the current block addr is %d, and lru is %d\n", setStartAddr+i ,cache.blocks[setStartAddr+i].lruLabel);
             if(cache.blocks[setStartAddr+i].lruLabel==0){
